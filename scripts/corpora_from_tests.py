@@ -45,12 +45,13 @@ class OperationRegistryEntry(typing.Generic[SV1]):
     test_sedes: ssz.BaseSedes
     ssz_file_names: typing.Sequence[str]
 
-OperationRegistry = typing.NewType("OperationRegistry", typing.Dict[str,OperationRegistryEntry])
 
+OperationRegistry = typing.NewType(
+    "OperationRegistry", typing.Dict[str, OperationRegistryEntry]
+)
 
 
 STATE_SSZ_FILE_NAMES = ("pre.ssz", "post.ssz")
-
 
 
 def main(argv=None):
@@ -62,9 +63,11 @@ def main(argv=None):
     try:
         op_details = op_registry[args.operation_name]
     except KeyError as e:
-        raise ValueError(f"Operation name '{args.operation_name}' not supported.") from e
+        raise ValueError(
+            f"Operation name '{args.operation_name}' not supported."
+        ) from e
 
-    op_dest =  args.out_dir or pathlib.Path(op_details.name+"_corpora")
+    op_dest = args.out_dir or pathlib.Path(op_details.name + "_corpora")
     if args.force:
         # TODO print warning and wait for user confirmation?
         shutil.rmtree(op_dest, ignore_errors=True)
@@ -75,8 +78,12 @@ def main(argv=None):
     state_mapping, next_id = get_existing_states(args.state_out_dir)
     num_states_pre = len(state_mapping)
     logging.info("Found %s existing states.", num_states_pre)
-    state_mapping, next_id = collect_found_states(args.search_root, args.state_out_dir, state_mapping, next_id)
-    logging.info("Found and imported %s new states.", len(state_mapping) - num_states_pre)
+    state_mapping, next_id = collect_found_states(
+        args.search_root, args.state_out_dir, state_mapping, next_id
+    )
+    logging.info(
+        "Found and imported %s new states.", len(state_mapping) - num_states_pre
+    )
 
     test_names = set()
     num_ops = 0
@@ -96,36 +103,77 @@ def main(argv=None):
 
             out_path.write_bytes(raw)
             test_names.add(out_path.name)
-    logging.info("Wrote %s unique test cases from %s unique operations and %s states.", len(test_names), num_ops, len(state_mapping))
+    logging.info(
+        "Wrote %s unique test cases from %s unique operations and %s states.",
+        len(test_names),
+        num_ops,
+        len(state_mapping),
+    )
 
-def get_args(argv=None, op_names: typing.Optional[typing.Sequence[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Extracts basic fuzzing corpora from eth2 operation spec tests. "
-            "as described in https://github.com/ethereum/eth2.0-specs/tree/dev/specs/test_formats/operations")
-    parser.add_argument("--search-root", type=pathlib.Path, default=".", help="Directory containing relevant ssz files. Defaults to pwd")
-    parser.add_argument("--state-out-dir", type=pathlib.Path, default="./beaconstate", help="Output directory containing beaconstate ssz files.")
-    parser.add_argument("operation_name", choices=op_names or None, help="Operation Name: The identifier of the operation test cases to extract and generate. See operation_registry.") 
-    parser.add_argument("--out-dir", type=pathlib.Path, help="Output directory for operation corpora. Defaults to './<operation_name>_corpora'")
-    parser.add_argument("--force", action="store_true", help="Replace output directories if they already exist. Generally not required.")
+
+def get_args(
+    argv=None, op_names: typing.Optional[typing.Sequence[str]] = None
+) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Extracts basic fuzzing corpora from eth2 operation spec tests. "
+        "as described in https://github.com/ethereum/eth2.0-specs/tree/dev/specs/test_formats/operations"
+    )
+    parser.add_argument(
+        "--search-root",
+        type=pathlib.Path,
+        default=".",
+        help="Directory containing relevant ssz files. Defaults to pwd",
+    )
+    parser.add_argument(
+        "--state-out-dir",
+        type=pathlib.Path,
+        default="./beaconstate",
+        help="Output directory containing beaconstate ssz files.",
+    )
+    parser.add_argument(
+        "operation_name",
+        choices=op_names or None,
+        help="Operation Name: The identifier of the operation test cases to extract and generate. See operation_registry.",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=pathlib.Path,
+        help="Output directory for operation corpora. Defaults to './<operation_name>_corpora'",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace output directories if they already exist. Generally not required.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
-    #parser.add_argument("--save_yaml", action="store_true", help="Save YAML files of the test cases.")
+    # parser.add_argument("--save_yaml", action="store_true", help="Save YAML files of the test cases.")
     return parser.parse_args(argv)
 
 
-def get_operations(search_dir: pathlib.Path, op_details: OperationRegistryEntry) -> typing.Iterable[SSZType]:
+def get_operations(
+    search_dir: pathlib.Path, op_details: OperationRegistryEntry
+) -> typing.Iterable[SSZType]:
     """Returns unique operations in the search directory."""
     # TODO deduplication? Only an efficiency not correctness problem. SHA1 does dedup after this
     seen_ops = set()
     for f in recursive_iterfiles(search_dir):
-        if f.name.lower() in  op_details.ssz_file_names:
+        if f.name.lower() in op_details.ssz_file_names:
             raw = f.read_bytes()
             raw_hash = hashlib.sha1(raw).digest()
             if raw_hash not in seen_ops:
                 # TODO handle deserialization errors
                 seen_ops.add(raw_hash)
-                yield translate_value(op_details.operation_sedes.deserialize(raw), op_details.operation_type)
+                yield translate_value(
+                    op_details.operation_sedes.deserialize(raw),
+                    op_details.operation_type,
+                )
 
 
-def get_existing_states(state_dir: pathlib.Path, condense_duplicates: bool = False, validate_states: bool = False) -> typing.Tuple[typing.Dict[bytes, uint16], uint16]:
+def get_existing_states(
+    state_dir: pathlib.Path,
+    condense_duplicates: bool = False,
+    validate_states: bool = False,
+) -> typing.Tuple[typing.Dict[bytes, uint16], uint16]:
     """Reads all files in the provided state directory.
     :returns: a tuple containing a mapping of SHA1 bytes of the states to filenames/state_ids, and the next available state_id
     :raises AssertionError: if directory contains unexpected filenames (that aren't a uint16).
@@ -154,7 +202,14 @@ def get_existing_states(state_dir: pathlib.Path, condense_duplicates: bool = Fal
     return state_mapping, uint16(highest_id + 1)
 
 
-def collect_found_states(search_root: pathlib.Path, state_dir: pathlib.Path, state_mapping: typing.Dict[bytes, uint16], next_id: uint16, state_file_names: typing.Iterable[str] = STATE_SSZ_FILE_NAMES, validate_states: bool = False) -> typing.Tuple[typing.Dict[bytes, uint16], uint16]:
+def collect_found_states(
+    search_root: pathlib.Path,
+    state_dir: pathlib.Path,
+    state_mapping: typing.Dict[bytes, uint16],
+    next_id: uint16,
+    state_file_names: typing.Iterable[str] = STATE_SSZ_FILE_NAMES,
+    validate_states: bool = False,
+) -> typing.Tuple[typing.Dict[bytes, uint16], uint16]:
     """Searches search_root for new state files based on file name.
 
     Saves any new files to state_dir.
@@ -195,44 +250,50 @@ def recursive_iterfiles(path: pathlib.Path) -> typing.Iterable[pathlib.Path]:
 
 def load_builtin_registry() -> OperationRegistry:
     registry_entries = [
-            OperationRegistryEntry(
-                name="block",
-                operation_type=spec.BeaconBlock,
-                operation_sedes=translate_typ(spec.BeaconBlock),
-                test_type=BlockTestCase,
-                test_type_factory=lambda i, o: BlockTestCase(state_id=i, block=o),
-                test_sedes=translate_typ(BlockTestCase),
-                ssz_file_names=("block.ssz"),
-                ),
-            OperationRegistryEntry(
-                name="block_header",
-                operation_type=spec.BeaconBlock,
-                operation_sedes=translate_typ(spec.BeaconBlock),
-                test_type=BlockHeaderTestCase,
-                test_type_factory=lambda i, o: BlockHeaderTestCase(state_id=i, block=o),
-                test_sedes=translate_typ(BlockHeaderTestCase),
-                ssz_file_names=("block.ssz"),
-                ),
-            OperationRegistryEntry(
-                name="attestation",
-                operation_type=spec.Attestation,
-                operation_sedes=translate_typ(spec.Attestation),
-                test_type=AttestationTestCase,
-                test_type_factory=lambda i, o: AttestationTestCase(state_id=i, attestation=o),
-                test_sedes=translate_typ(AttestationTestCase),
-                ssz_file_names=("attestation.ssz"),
-                ),
+        OperationRegistryEntry(
+            name="block",
+            operation_type=spec.BeaconBlock,
+            operation_sedes=translate_typ(spec.BeaconBlock),
+            test_type=BlockTestCase,
+            test_type_factory=lambda i, o: BlockTestCase(state_id=i, block=o),
+            test_sedes=translate_typ(BlockTestCase),
+            ssz_file_names=("block.ssz"),
+        ),
+        OperationRegistryEntry(
+            name="block_header",
+            operation_type=spec.BeaconBlock,
+            operation_sedes=translate_typ(spec.BeaconBlock),
+            test_type=BlockHeaderTestCase,
+            test_type_factory=lambda i, o: BlockHeaderTestCase(state_id=i, block=o),
+            test_sedes=translate_typ(BlockHeaderTestCase),
+            ssz_file_names=("block.ssz"),
+        ),
+        OperationRegistryEntry(
+            name="attestation",
+            operation_type=spec.Attestation,
+            operation_sedes=translate_typ(spec.Attestation),
+            test_type=AttestationTestCase,
+            test_type_factory=lambda i, o: AttestationTestCase(
+                state_id=i, attestation=o
+            ),
+            test_sedes=translate_typ(AttestationTestCase),
+            ssz_file_names=("attestation.ssz"),
+        ),
     ]
     return OperationRegistry({r.name: r for r in registry_entries})
 
+
 # Test case classes
+
 
 class BlockTestCase(Container):
     state_id: uint16
     block: spec.BeaconBlock
 
+
 # Same as BlockTestCase
 BlockHeaderTestCase = BlockTestCase
+
 
 class AttestationTestCase(Container):
     state_id: uint16
