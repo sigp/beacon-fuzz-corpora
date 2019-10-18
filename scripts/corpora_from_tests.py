@@ -78,12 +78,14 @@ def main(argv=None):
     state_mapping, next_id = collect_found_states(args.search_root, args.state_out_dir, state_mapping, next_id)
     logging.info("Found and imported %s new states.", len(state_mapping) - num_states_pre)
 
-    num_tests = 0
+    test_names = set()
+    num_ops = 0
     for op in get_operations(args.search_root, op_details):
+        num_ops += 1
         # Combine with every possible state
         for state_id in state_mapping.values():
             test_case = op_details.test_type_factory(state_id, op)
-            #logging.debug("Created test case: %r", test_case)
+            logging.debug("Created test case: %s", test_case)
             raw = serialize(test_case)
 
             # libfuzzer also uses sha1 names!
@@ -93,8 +95,8 @@ def main(argv=None):
             logging.debug("Saving to %s", out_path)
 
             out_path.write_bytes(raw)
-            num_tests += 1
-    logging.info("Wrote %s test cases.", num_tests)
+            test_names.add(out_path.name)
+    logging.info("Wrote %s unique test cases from %s unique operations and %s states.", len(test_names), num_ops, len(state_mapping))
 
 def get_args(argv=None, op_names: typing.Optional[typing.Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Extracts basic fuzzing corpora from eth2 operation spec tests. "
@@ -110,11 +112,17 @@ def get_args(argv=None, op_names: typing.Optional[typing.Sequence[str]] = None) 
 
 
 def get_operations(search_dir: pathlib.Path, op_details: OperationRegistryEntry) -> typing.Iterable[SSZType]:
+    """Returns unique operations in the search directory."""
     # TODO deduplication? Only an efficiency not correctness problem. SHA1 does dedup after this
+    seen_ops = set()
     for f in recursive_iterfiles(search_dir):
         if f.name.lower() in  op_details.ssz_file_names:
-            # TODO handle deserialization errors
-            yield translate_value(op_details.operation_sedes.deserialize(f.read_bytes()), op_details.operation_type)
+            raw = f.read_bytes()
+            raw_hash = hashlib.sha1(raw).digest()
+            if raw_hash not in seen_ops:
+                # TODO handle deserialization errors
+                seen_ops.add(raw_hash)
+                yield translate_value(op_details.operation_sedes.deserialize(raw), op_details.operation_type)
 
 
 def get_existing_states(state_dir: pathlib.Path, condense_duplicates: bool = False, validate_states: bool = False) -> typing.Tuple[typing.Dict[bytes, uint16], uint16]:
@@ -210,7 +218,7 @@ def load_builtin_registry() -> OperationRegistry:
                 operation_type=spec.Attestation,
                 operation_sedes=translate_typ(spec.Attestation),
                 test_type=AttestationTestCase,
-                test_type_factory=lambda i, o: AttestationTestCase(state_id=i, Attestation=o),
+                test_type_factory=lambda i, o: AttestationTestCase(state_id=i, attestation=o),
                 test_sedes=translate_typ(AttestationTestCase),
                 ssz_file_names=("attestation.ssz"),
                 ),
