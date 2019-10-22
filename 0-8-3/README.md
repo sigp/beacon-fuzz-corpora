@@ -9,6 +9,21 @@ Compatible with current head of https://github.com/sigp/eth2.0-fuzzing
 NOTE: uint16 is used to allow for a reasonable number of test states, while keeping a small size.
 Minimizing the size reduces the fuzzer's search space.
 
+## `attestation/`
+
+Block headers ssz input in the following format:
+
+
+```python
+
+class AttestationTestCase(Container):
+    state_id: uint16
+    block: Attestation
+
+```
+
+where `state_id` is the filename of a relevant `BeaconState` in `./<preset>/beaconstate/`.
+
 ## `block_header/`
 
 Block headers ssz input in the following format:
