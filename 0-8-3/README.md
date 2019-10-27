@@ -1,17 +1,15 @@
 # Compatible fuzzer
 
-Compatible with current head of https://github.com/sigp/eth2.0-fuzzing
-
-(As of 2019-10-20)
+Compatible with current head of `master` branch for https://github.com/sigp/beacon-fuzz (commit [32b6db2](https://github.com/sigp/beacon-fuzz/commit/32b6db205143b1dd574b1df5e39c3d2d0f474ed2))
 
 # Corpora Structure
 
-NOTE: uint16 is used to allow for a reasonable number of test states, while keeping a small size.
+NOTE: `uint16` is used to allow for a reasonable number of test states, while keeping a small size.
 Minimizing the size reduces the fuzzer's search space.
 
 ## `attestation/`
 
-Block headers ssz input in the following format:
+Block headers SSZ input in the following format:
 
 
 ```python
@@ -59,15 +57,13 @@ where `state_id` is the filename of a relevant `BeaconState` in `./<preset>/beac
 
 Binary byte string to be shuffled
 
-TODO is this little endian or big?
-
 Interpreted as follows:
 
 
 ```python
 
 # some binary blob, should at least 34 bytes long
-raw_input = bytes.fromhex('deadbeef' * 12) 
+raw_input = bytes.fromhex('deadbeef' * 12)
 
 # the length of the list to be shuffled
 shuffle_rounds = raw_input[0:2] % 100
