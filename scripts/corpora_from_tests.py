@@ -279,6 +279,17 @@ def load_builtin_registry() -> OperationRegistry:
             test_sedes=translate_typ(AttestationTestCase),
             ssz_file_names=("attestation.ssz"),
         ),
+        OperationRegistryEntry(
+            name="attester_slashings",
+            operation_type=spec.AttesterSlashing,
+            operation_sedes=translate_typ(spec.AttesterSlashing),
+            test_type=AttesterSlashingTestCase,
+            test_type_factory=lambda i, o: AttesterSlashingTestCase(
+                state_id=i, attester_slashing=o
+            ),
+            test_sedes=translate_typ(AttesterSlashingTestCase),
+            ssz_file_names=("attester_slashing.ssz"),
+        ),
     ]
     return OperationRegistry({r.name: r for r in registry_entries})
 
@@ -298,6 +309,10 @@ BlockHeaderTestCase = BlockTestCase
 class AttestationTestCase(Container):
     state_id: uint16
     attestation: spec.Attestation
+
+class AttesterSlashingTestCase(Container):
+    state_id: uint16
+    attester_slashing: spec.AttesterSlashing
 
 
 if __name__ == "__main__":
