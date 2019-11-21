@@ -7,20 +7,33 @@ Compatible with current head of `master` branch for https://github.com/sigp/beac
 NOTE: `uint16` is used to allow for a reasonable number of test states, while keeping a small size.
 Minimizing the size reduces the fuzzer's search space.
 
+For the following, `state_id` is the filename of a relevant `BeaconState` in `./<preset>/beaconstate/`.
+
 ## `attestation/`
 
-Block headers SSZ input in the following format:
+Attestation SSZ input in the following format:
 
 
 ```python
 
 class AttestationTestCase(Container):
     state_id: uint16
-    block: Attestation
+    attestation: Attestation
 
 ```
 
-where `state_id` is the filename of a relevant `BeaconState` in `./<preset>/beaconstate/`.
+## `attester_slashing/`
+
+Attestation SSZ input in the following format:
+
+
+```python
+
+class AttesterSlashingTestCase(Container):
+    state_id: uint16
+    attester_slashing: AttesterSlashing
+
+```
 
 ## `block_header/`
 
@@ -35,8 +48,6 @@ class BlockHeaderTestCase(Container):
 
 ```
 
-where `state_id` is the filename of a relevant `BeaconState` in `./<preset>/beaconstate/`.
-
 ## `block/`
 
 Block ssz input in the following format:
@@ -49,8 +60,6 @@ class BlockTestCase(Container):
     block: BeaconBlock
 
 ```
-
-where `state_id` is the filename of a relevant `BeaconState` in `./<preset>/beaconstate/`.
 
 ## `shuffle/`
 
