@@ -10,6 +10,8 @@ Any new state files found will be appended to the ``--state-out-dir`` with a fil
 increasing number.
 
 The content of existing state files will be compared by hash, so only new states will be appended.
+
+Depends on Eth2.0 Python spec, so run it from a venv with the relevant spec version installed!
 """
 
 import argparse
@@ -280,7 +282,7 @@ def load_builtin_registry() -> OperationRegistry:
             ssz_file_names=("attestation.ssz"),
         ),
         OperationRegistryEntry(
-            name="attester_slashings",
+            name="attester_slashing",
             operation_type=spec.AttesterSlashing,
             operation_sedes=translate_typ(spec.AttesterSlashing),
             test_type=AttesterSlashingTestCase,
@@ -289,6 +291,17 @@ def load_builtin_registry() -> OperationRegistry:
             ),
             test_sedes=translate_typ(AttesterSlashingTestCase),
             ssz_file_names=("attester_slashing.ssz"),
+        ),
+        OperationRegistryEntry(
+            name="proposer_slashing",
+            operation_type=spec.ProposerSlashing,
+            operation_sedes=translate_typ(spec.ProposerSlashing),
+            test_type=ProposerSlashingTestCase,
+            test_type_factory=lambda i, o: ProposerSlashingTestCase(
+                state_id=i, proposer_slashing=o
+            ),
+            test_sedes=translate_typ(ProposerSlashingTestCase),
+            ssz_file_names=("proposer_slashing.ssz"),
         ),
     ]
     return OperationRegistry({r.name: r for r in registry_entries})
@@ -313,6 +326,10 @@ class AttestationTestCase(Container):
 class AttesterSlashingTestCase(Container):
     state_id: uint16
     attester_slashing: spec.AttesterSlashing
+
+class ProposerSlashingTestCase(Container):
+    state_id: uint16
+    proposer_slashing: spec.ProposerSlashing
 
 
 if __name__ == "__main__":
