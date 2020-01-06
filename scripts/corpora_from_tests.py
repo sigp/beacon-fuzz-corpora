@@ -2,7 +2,7 @@
 
 """A helper to create initial corpora from spec test cases.
 
-Fairly inflexible currently, to only make BlockHeaderTestCases
+Makes Test cases as defined in the OperationRegistry
 
 Given some states and some other input, will generate all possible combinations of corpora.
 
@@ -12,6 +12,7 @@ increasing number.
 The content of existing state files will be compared by hash, so only new states will be appended.
 
 Depends on Eth2.0 Python spec, so run it from a venv with the relevant spec version installed!
+Ensure the spec version and spec test versions are the same!
 """
 
 import argparse
@@ -29,15 +30,12 @@ from eth2spec.fuzzing.decoder import translate_typ, translate_value
 from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import uint16, Container, SSZType
 
-# TODO registry? mapping of test/operation names to containers, sedes, test_sedes, file_names?
-# Also container constructor, fields need to be kwargs
-
 SV1 = typing.TypeVar("SV1", bound=SSZType)
 SV2 = typing.TypeVar("SV2", bound=SSZType)
 
 
 @dataclasses.dataclass
-class OperationRegistryEntry(typing.Generic[SV1]):
+class OperationRegistryEntry(typing.Generic[SV1, SV2]):
     name: str
     operation_type: typing.Type[SV1]
     operation_sedes: ssz.BaseSedes
@@ -56,8 +54,7 @@ OperationRegistry = typing.NewType(
 STATE_SSZ_FILE_NAMES = ("pre.ssz", "post.ssz")
 
 
-def main(argv=None):
-    logging.basicConfig(level=logging.INFO)
+def main(argv: typing.Optional[typing.Collection[str]] = None) -> int:
     op_registry = load_builtin_registry()
     args = get_args(argv, op_registry.keys())
     if args.verbose:
@@ -87,7 +84,7 @@ def main(argv=None):
         "Found and imported %s new states.", len(state_mapping) - num_states_pre
     )
 
-    test_names = set()
+    test_names: typing.Set[str] = set()
     num_ops = 0
     for op in get_operations(args.search_root, op_details):
         num_ops += 1
@@ -111,10 +108,11 @@ def main(argv=None):
         num_ops,
         len(state_mapping),
     )
+    return 0
 
 
 def get_args(
-    argv=None, op_names: typing.Optional[typing.Sequence[str]] = None
+    argv=None, op_names: typing.Optional[typing.Collection[str]] = None
 ) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extracts basic fuzzing corpora from eth2 operation spec tests. "
@@ -157,7 +155,7 @@ def get_operations(
 ) -> typing.Iterable[SSZType]:
     """Returns unique operations in the search directory."""
     # TODO deduplication? Only an efficiency not correctness problem. SHA1 does dedup after this
-    seen_ops = set()
+    seen_ops: typing.Set[bytes] = set()
     for f in recursive_iterfiles(search_dir):
         if f.name.lower() in op_details.ssz_file_names:
             raw = f.read_bytes()
@@ -183,7 +181,7 @@ def get_existing_states(
     if condense_duplicates:
         raise NotImplementedError
     highest_id = -1
-    state_mapping = {}
+    state_mapping: typing.Dict[bytes, int] = {}
     for state_f in state_dir.iterdir():
         if not state_f.is_file():
             logging.warning("Unexpected entry: %s, ignored", state_f)
@@ -333,4 +331,5 @@ class ProposerSlashingTestCase(Container):
 
 
 if __name__ == "__main__":
-    main()
+    logging.basicConfig(level=logging.INFO)
+    sys.exit(main())
