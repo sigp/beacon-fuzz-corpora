@@ -321,9 +321,11 @@ class AttestationTestCase(Container):
     state_id: uint16
     attestation: spec.Attestation
 
+
 class AttesterSlashingTestCase(Container):
     state_id: uint16
     attester_slashing: spec.AttesterSlashing
+
 
 class ProposerSlashingTestCase(Container):
     state_id: uint16

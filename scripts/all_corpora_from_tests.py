@@ -20,19 +20,22 @@ def get_args(
     argv=None, op_names: typing.Optional[typing.Sequence[str]] = None
 ) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description=("Extracts all basic fuzzing corpora from eth2 operation spec tests. "
+        description=(
+            "Extracts all basic fuzzing corpora from eth2 operation spec tests. "
             "as described in https://github.com/ethereum/eth2.0-specs/tree/dev/specs/test_formats/operations. "
             "NOTE: assumes that the relevant operation tests are in directories with the same name."
-            )
+        )
     )
     parser.add_argument(
         "--test-root",
         type=pathlib.Path,
         default=".",
-        help=("Directory containing relevant ssz files. Defaults to pwd. "
+        help=(
+            "Directory containing relevant ssz files. Defaults to pwd. "
             "This should be the root of spec tests directory ('.../tests/') "
             "or within the config specific section ('.../tests/mainnet') if you only "
-            "want to extract 1 type of corpora."),
+            "want to extract 1 type of corpora."
+        ),
     )
     parser.add_argument(
         "--out-dir",
@@ -47,6 +50,7 @@ def get_args(
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
     # parser.add_argument("--save_yaml", action="store_true", help="Save YAML files of the test cases.")
     return parser.parse_args(argv)
+
 
 def main(argv: typing.Optional[typing.Collection[str]] = None) -> int:
     logging.basicConfig(level=logging.INFO)
@@ -66,9 +70,13 @@ def main(argv: typing.Optional[typing.Collection[str]] = None) -> int:
         logging.info("Finding mainnet tests.")
         operation_path = mainnet_path / "phase0" / "operations"
         if operation_path.exists():
-            extract_tests(operation_path, args.out_dir / "mainnet", op_names, common_args)
+            extract_tests(
+                operation_path, args.out_dir / "mainnet", op_names, common_args
+            )
         else:
-            logging.error("Unexpected directory structure: '%r' not present", operation_path)
+            logging.error(
+                "Unexpected directory structure: '%r' not present", operation_path
+            )
             result = 1
             # Continue with other config type
     minimal_path = find_subdir(args.test_root, "minimal")
@@ -76,14 +84,23 @@ def main(argv: typing.Optional[typing.Collection[str]] = None) -> int:
         logging.info("Finding minimal tests.")
         operation_path = minimal_path / "phase0" / "operations"
         if operation_path.exists():
-            extract_tests(operation_path, args.out_dir / "minimal", op_names, common_args)
+            extract_tests(
+                operation_path, args.out_dir / "minimal", op_names, common_args
+            )
         else:
-            logging.error("Unexpected directory structure: '%r' not present", operation_path)
+            logging.error(
+                "Unexpected directory structure: '%r' not present", operation_path
+            )
             result = 1
     return result
 
 
-def extract_tests(operation_root: pathlib.Path, out_dir: pathlib.Path, operation_names: typing.List[str], common_args: typing.List[str]):
+def extract_tests(
+    operation_root: pathlib.Path,
+    out_dir: pathlib.Path,
+    operation_names: typing.List[str],
+    common_args: typing.List[str],
+):
     state_path = out_dir / "beaconstate"
 
     for op in operation_names:
@@ -91,7 +108,15 @@ def extract_tests(operation_root: pathlib.Path, out_dir: pathlib.Path, operation
         if not test_dir.is_dir():
             logging.info("Operation '%s' not found", test_dir)
             continue
-        args = ["--search-root", str(test_dir), "--state-out-dir", str(state_path), "--out-dir", str(out_dir / op), op] + common_args
+        args = [
+            "--search-root",
+            str(test_dir),
+            "--state-out-dir",
+            str(state_path),
+            "--out-dir",
+            str(out_dir / op),
+            op,
+        ] + common_args
         corpora_from_tests.main(args)
 
 
@@ -123,6 +148,6 @@ def find_subdir(root: pathlib.Path, subdir_name: str) -> typing.Optional[pathlib
             return result
     return None
 
+
 if __name__ == "__main__":
     sys.exit(main())
-
