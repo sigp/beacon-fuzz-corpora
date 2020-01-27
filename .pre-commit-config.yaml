@@ -1,0 +1,56 @@
+# To update revisions, use `pre-commit autoupdate`
+default_language_version:
+    python: python3
+exclude: '^\d+-\d+-\d+/(mainnet|minimal)/.*$'
+repos:
+
+# Python
+# TODO remove branch paths, should use specific revisions
+  - repo: https://github.com/psf/black
+    rev: 19.10b0
+    hooks:
+      - id: black
+        name: python-black
+
+  - repo: https://github.com/asottile/seed-isort-config
+    rev: v1.9.3
+    hooks:
+      - id: seed-isort-config
+        name: seed-isort-config
+
+  - repo: https://github.com/timothycrosley/isort
+    rev: 4.3.21
+    hooks:
+      - id: isort
+        name: python-isort
+        additional_dependencies: [toml]
+
+# Shell
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 1.11.0
+    hooks:
+        # These need external installation
+        # TODO specify via additional_dependencies ?
+      - id: shellcheck
+      - id: shfmt
+        args: ['-l', '-i', '4', '-ci', '-w']
+
+# Makefile
+# TODO checkmake doesn't allow usage like "checkmake f1 f2 f3" to provide
+# multiple files at once
+# - repo: https://github.com/Lucas-C/pre-commit-hooks-go
+#   rev: v1.0.0
+#   hooks:
+#     - id: checkmake
+#       pass_filenames: false
+#       files: '.*'
+#       types: [makefile]
+
+# Misc/General
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: debug-statements
+      - id: check-merge-conflict
