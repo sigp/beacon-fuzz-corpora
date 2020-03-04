@@ -23,12 +23,11 @@ import pathlib
 import shutil
 import typing
 
-
 import ssz
-from eth2spec.phase0 import spec
 from eth2spec.fuzzing.decoder import translate_typ, translate_value
+from eth2spec.phase0 import spec
 from eth2spec.utils.ssz.ssz_impl import serialize
-from eth2spec.utils.ssz.ssz_typing import uint16, Container, SSZType
+from eth2spec.utils.ssz.ssz_typing import Container, SSZType, uint16
 
 SV1 = typing.TypeVar("SV1", bound=SSZType)
 SV2 = typing.TypeVar("SV2", bound=SSZType)

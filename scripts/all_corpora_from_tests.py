@@ -9,10 +9,11 @@ Ensure the spec version and spec test versions are the same!
 """
 
 import argparse
-import typing
 import logging
-import sys
 import pathlib
+import sys
+import typing
+
 import corpora_from_tests
 
 
