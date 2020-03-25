@@ -36,22 +36,37 @@ import typing
 
 import packaging.specifiers
 import packaging.version
-import ssz
 
 try:
     import eth2spec
-    from eth2spec.fuzzing.decoder import translate_typ, translate_value
     from eth2spec.phase0 import spec
     from eth2spec.utils.ssz.ssz_impl import serialize
-    from eth2spec.utils.ssz.ssz_typing import Container, SSZType, uint16
+    from eth2spec.utils.ssz.ssz_typing import Container, uint16
 except ImportError as e:
     raise RuntimeError(
         "You must install an appropriate version of the Eth2 PySpec."
     ) from e
 
+try:
+    import ssz
+    from eth2spec.fuzzing.decoder import translate_typ, translate_value
+    from eth2spec.utils.ssz.ssz_typing import SSZType
 
-SV1 = typing.TypeVar("SV1", bound=SSZType)
-SV2 = typing.TypeVar("SV2", bound=SSZType)
+    _SSZ_BASE_TYPE = SSZType
+    _USE_REMERKLEABLE = False
+
+except ImportError:
+    # In use from eth2spec v0.11.0
+    # The import is just to check that it's here
+    import remerkleable
+    from eth2spec.utils.ssz.ssz_typing import View
+
+    _SSZ_BASE_TYPE = View
+    _USE_REMERKLEABLE = True
+
+
+SV1 = typing.TypeVar("SV1", bound=_SSZ_BASE_TYPE)
+SV2 = typing.TypeVar("SV2", bound=_SSZ_BASE_TYPE)
 
 
 # Uncomment if you want to hard-code a default spec version if not otherwise detected
@@ -243,7 +258,7 @@ def get_target_definition(
 
 def get_operations(
     search_dir: pathlib.Path, op_details: TargetRegistryEntry, continue_on_error: bool
-) -> typing.Iterable[SSZType]:
+) -> typing.Iterable[_SSZ_BASE_TYPE]:
     """Returns unique operations in the search directory.
 
     :param continue_on_error: Will continue if failing to deserialize.
@@ -502,19 +517,28 @@ def _serialize_test_type_fn(test_obj):
     return serialize(test_obj)
 
 
-def _deserialize_op_factory(op_type):
+if _USE_REMERKLEABLE:
 
-    op_sedes = translate_typ(op_type)
+    def _deserialize_op_factory(op_type):
+        # See remerkleable
+        return op_type.decode_bytes
 
-    def deserialize_fun(data):
-        try:
-            return translate_value(op_sedes.deserialize(data), op_type,)
-        except ssz.exceptions.DeserializationError as e:
-            # NOTE: Spec tests are sometimes incorrect so this can fail, see top of script
-            logging.debug("Deserialize error", exc_info=True)
-            return None
 
-    return deserialize_fun
+else:
+
+    def _deserialize_op_factory(op_type):
+
+        op_sedes = translate_typ(op_type)
+
+        def deserialize_fun(data):
+            try:
+                return translate_value(op_sedes.deserialize(data), op_type,)
+            except ssz.exceptions.DeserializationError as e:
+                # NOTE: Spec tests are sometimes incorrect so this can fail, see top of script
+                logging.debug("Deserialize error", exc_info=True)
+                return None
+
+        return deserialize_fun
 
 
 if __name__ == "__main__":
