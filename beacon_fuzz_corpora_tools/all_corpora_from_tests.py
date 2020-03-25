@@ -80,8 +80,8 @@ def main(argv: typing.Optional[typing.Collection[str]] = None) -> int:
     if args.spec_version:
         common_args.append("--spec-version")
         common_args.append(args.spec_version)
-    if args.stop_on_ssz_error:
-        common_args.append(args.stop_on_ssz_error)
+    if args.ignore_ssz_error:
+        common_args.append("--ignore-ssz-error")
 
     op_names = get_operation_names()
 

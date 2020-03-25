@@ -44,6 +44,10 @@ as other corpora refer to them.
 
 ## Tools/scripts
 
+Useful for generating starter corpora from [eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
+
+Ensure that the pyspec you install is the same version as the spec tests (i.e. have the same `git tag`).
+
 ```console
 $ python -m venv venv
 $ . venv/bin/activate

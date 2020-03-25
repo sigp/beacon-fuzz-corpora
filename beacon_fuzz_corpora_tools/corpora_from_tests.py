@@ -49,6 +49,7 @@ except ImportError as e:
         "You must install an appropriate version of the Eth2 PySpec."
     ) from e
 
+
 SV1 = typing.TypeVar("SV1", bound=SSZType)
 SV2 = typing.TypeVar("SV2", bound=SSZType)
 
@@ -83,11 +84,11 @@ STATE_SSZ_FILE_NAMES = ("pre.ssz", "post.ssz")
 class TargetRegistryEntry(typing.Generic[SV1, SV2]):
     name: str
     operation_type: typing.Type[SV1]
-    operation_sedes: ssz.BaseSedes
+    deserialize_operation: typing.Callable[[bytes, bool], SV1]
     test_type: typing.Type[SV2]
     # need the factory because the dataclass constructors don't allow positional arguments
     test_type_factory: typing.Callable[[uint16, SV1], SV2]
-    test_sedes: ssz.BaseSedes
+    serialize_test_type: typing.Callable[[SV2], bytes]
     ssz_file_names: typing.Sequence[str]
     # One or more directories containing relevant test files
     # Should be relative to the root of the eth2.0-spec-tests repository
@@ -151,7 +152,7 @@ def main(argv: typing.Optional[typing.Collection[str]] = None) -> int:
         for state_id in state_mapping.values():
             test_case = op_details.test_type_factory(state_id, op)
             logging.debug("Created test case: %s", test_case)
-            raw = serialize(test_case)
+            raw = op_details.serialize_test_type(test_case)
 
             # libfuzzer also uses sha1 names!
             out_path = op_dest / hashlib.sha1(raw).hexdigest()
@@ -259,20 +260,14 @@ def get_operations(
             if raw_hash not in seen_ops:
                 # TODO handle deserialization errors
                 seen_ops.add(raw_hash)
-                try:
-                    yield translate_value(
-                        op_details.operation_sedes.deserialize(raw),
-                        op_details.operation_type,
-                    )
-                except ssz.exceptions.DeserializationError as e:
-                    # NOTE: Spec tests are sometimes incorrect so this can fail, see top of script
-                    logging.warning(
-                        "Failed to deserialize %s",
-                        f,
-                        exc_info=logging.getLogger().isEnabledFor(logging.DEBUG),
-                    )
+                maybe_op = op_details.deserialize_operation(raw)
+                if maybe_op is not None:
+                    # Successful
+                    yield maybe_op
+                else:
+                    logging.warning("Deserialization failed for %s", f)
                     if not continue_on_error:
-                        raise
+                        raise RuntimeError("Deserialization failed.")
 
 
 def get_existing_states(
@@ -379,10 +374,10 @@ def _get_attestation_entry(spec_version: packaging.version.Version):
     return TargetRegistryEntry(
         name="attestation",
         operation_type=spec.Attestation,
-        operation_sedes=translate_typ(spec.Attestation),
+        deserialize_operation=_deserialize_op_factory(spec.Attestation),
         test_type=AttestationTestCase,
         test_type_factory=lambda i, o: AttestationTestCase(state_id=i, attestation=o),
-        test_sedes=translate_typ(AttestationTestCase),
+        serialize_test_type=_serialize_test_type_fn,
         ssz_file_names=("attestation.ssz",),
     )
 
@@ -395,12 +390,12 @@ def _get_attester_slashing_entry(spec_version: packaging.version.Version):
     return TargetRegistryEntry(
         name="attester_slashing",
         operation_type=spec.AttesterSlashing,
-        operation_sedes=translate_typ(spec.AttesterSlashing),
+        deserialize_operation=_deserialize_op_factory(spec.AttesterSlashing),
         test_type=AttesterSlashingTestCase,
         test_type_factory=lambda i, o: AttesterSlashingTestCase(
             state_id=i, attester_slashing=o
         ),
-        test_sedes=translate_typ(AttesterSlashingTestCase),
+        serialize_test_type=_serialize_test_type_fn,
         ssz_file_names=("attester_slashing.ssz",),
     )
 
@@ -423,10 +418,10 @@ def _get_block_entry(spec_version: packaging.version.Version):
     return TargetRegistryEntry(
         name="block",
         operation_type=block_type,
-        operation_sedes=translate_typ(block_type),
+        deserialize_operation=_deserialize_op_factory(block_type),
         test_type=BlockTestCase,
         test_type_factory=lambda i, o: BlockTestCase(state_id=i, block=o),
-        test_sedes=translate_typ(BlockTestCase),
+        serialize_test_type=_serialize_test_type_fn,
         ssz_file_names=block_names,
     )
 
@@ -439,10 +434,10 @@ def _get_block_header_entry(spec_version: packaging.version.Version):
     return TargetRegistryEntry(
         name="block_header",
         operation_type=spec.BeaconBlock,
-        operation_sedes=translate_typ(spec.BeaconBlock),
+        deserialize_operation=_deserialize_op_factory(spec.BeaconBlock),
         test_type=BlockHeaderTestCase,
         test_type_factory=lambda i, o: BlockHeaderTestCase(state_id=i, block=o),
-        test_sedes=translate_typ(BlockHeaderTestCase),
+        serialize_test_type=_serialize_test_type_fn,
         ssz_file_names=("block.ssz",),
     )
 
@@ -455,10 +450,10 @@ def _get_deposit_entry(spec_version: packaging.version.Version):
     return TargetRegistryEntry(
         name="deposit",
         operation_type=spec.Deposit,
-        operation_sedes=translate_typ(spec.Deposit),
+        deserialize_operation=_deserialize_op_factory(spec.Deposit),
         test_type=DepositTestCase,
         test_type_factory=lambda i, o: DepositTestCase(state_id=i, deposit=o),
-        test_sedes=translate_typ(DepositTestCase),
+        serialize_test_type=_serialize_test_type_fn,
         ssz_file_names=("deposit.ssz",),
     )
 
@@ -471,12 +466,12 @@ def _get_proposer_slashing_entry(spec_version: packaging.version.Version):
     return TargetRegistryEntry(
         name="proposer_slashing",
         operation_type=spec.ProposerSlashing,
-        operation_sedes=translate_typ(spec.ProposerSlashing),
+        deserialize_operation=_deserialize_op_factory(spec.ProposerSlashing),
         test_type=ProposerSlashingTestCase,
         test_type_factory=lambda i, o: ProposerSlashingTestCase(
             state_id=i, proposer_slashing=o
         ),
-        test_sedes=translate_typ(ProposerSlashingTestCase),
+        serialize_test_type=_serialize_test_type_fn,
         ssz_file_names=("proposer_slashing.ssz",),
     )
 
@@ -495,12 +490,31 @@ def _get_voluntary_exit_entry(spec_version: packaging.version.Version):
     return TargetRegistryEntry(
         name="voluntary_exit",
         operation_type=exit_type,
-        operation_sedes=translate_typ(exit_type),
+        deserialize_operation=_deserialize_op_factory(exit_type),
         test_type=VoluntaryExitTestCase,
         test_type_factory=lambda i, o: VoluntaryExitTestCase(state_id=i, exit=o),
-        test_sedes=translate_typ(VoluntaryExitTestCase),
+        serialize_test_type=_serialize_test_type_fn,
         ssz_file_names=("voluntary_exit.ssz",),
     )
+
+
+def _serialize_test_type_fn(test_obj):
+    return serialize(test_obj)
+
+
+def _deserialize_op_factory(op_type):
+
+    op_sedes = translate_typ(op_type)
+
+    def deserialize_fun(data):
+        try:
+            return translate_value(op_sedes.deserialize(data), op_type,)
+        except ssz.exceptions.DeserializationError as e:
+            # NOTE: Spec tests are sometimes incorrect so this can fail, see top of script
+            logging.debug("Deserialize error", exc_info=True)
+            return None
+
+    return deserialize_fun
 
 
 if __name__ == "__main__":
