@@ -41,3 +41,16 @@ The `BeaconState` is not currently fuzzed, but passed verbatim as a series of kn
 
 Files in here should be a SSZ representation of a `BeaconState`, with integer filenames. Only add additional files to the `beaconstate/` directory and don't modify or rename existing files,
 as other corpora refer to them.
+
+## Tools/scripts
+
+```console
+$ python -m venv venv
+$ . venv/bin/activate
+$ pip install .
+$ cd /path/to/eth2.0-specs && make
+$ pip install /path/to/eth2/test_libs/pyspec
+$ pip install /path/to/eth2/test_libs/config_helpers
+$ all_corpora_from_tests -h
+$ corpora_from_tests -h
+```

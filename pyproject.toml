@@ -1,0 +1,29 @@
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.poetry]
+name = "beacon-fuzz-corpora-tools"
+version = "0.1.0"
+description = "Python tools associated with beacon-fuzz-corpora."
+authors = ["Nathaniel Jensen <nathaniel@sigmaprime.io>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+packaging = "^20.1"
+# NOTE: can't specify Eth2 Pyspec versions here,
+# as they aren't directly available via PyPI or git (needs to be `make`d first)
+
+[tool.poetry.dev-dependencies]
+
+[tool.poetry.scripts]
+all_corpora_from_tests = "beacon_fuzz_corpora_tools.all_corpora_from_tests:main"
+corpora_from_tests = "beacon_fuzz_corpora_tools.corpora_from_tests:main"
+
+[tool.isort]
+multi_line_output=3
+include_trailing_comma=true
+use_parentheses=true
+line_length=88
+known_third_party = ["packaging", "ssz"]
