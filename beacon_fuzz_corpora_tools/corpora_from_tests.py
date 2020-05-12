@@ -122,12 +122,16 @@ class TargetRegistry:
 _BUILTIN_TARGET_REGISTRY: typing.Optional[TargetRegistry] = None
 
 
+# TODO handle config loading - as vector size limits can depend on the config, this can potentially serialize inaccurately
+# for minimal test cases
+
+
 def main(argv: typing.Optional[typing.Collection[str]] = None) -> int:
     args = get_args(argv, SUPPORTED_TARGETS)
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    if SPEC_VERSION and SPEC_VERSION != args.spec_version:
-        logger.warning(
+    if SPEC_VERSION and args.spec_version and SPEC_VERSION != args.spec_version:
+        logging.warning(
             "Detected eth2spec version is different to --spec-version parameter. "
             "Continuing but results may be unexpected."
         )
